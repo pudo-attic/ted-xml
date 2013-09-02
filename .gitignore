@@ -35,3 +35,4 @@ nosetests.xml
 .pydevproject
 
 ted_exports/*
+.env

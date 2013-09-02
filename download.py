@@ -71,8 +71,8 @@ def download_all(session):
 
 if __name__ == '__main__':
     session = make_ecas_session()
-    download_all(session)
-    #download_latest(session)
+    #download_all(session)
+    download_latest(session)
     #download_by_id(session, '2011001')
     #download_by_id(session, '2012001')
     #download_by_id(session, '2013001')
