@@ -2,6 +2,7 @@ import os
 from lxml import etree
 from pprint import pprint
 
+from parseutil import ted_documents
 
 """
 <CODIF_DATA>
@@ -53,10 +54,10 @@ def audit(filename, doc):
     #print doc.find('.//FORM_SECTION').getchildren()
 
 
-def parse(filename):
-    fh = open(filename, 'rb')
-    xmldata = fh.read().replace('xmlns="', 'xmlns_="')
-    fh.close()
+def parse(filename, file_content):
+    #fh = open(filename, 'rb')
+    xmldata = file_content.replace('xmlns="', 'xmlns_="')
+    #fh.close()
     doc = etree.fromstring(xmldata)
     audit(filename, doc)
     cpvs = [{'code': e.get('CODE'), 'text': e.text} for e in doc.findall('.//NOTICE_DATA/ORIGINAL_CPV')]
@@ -109,4 +110,6 @@ def parse_all(path):
 
 if __name__ == '__main__':
     import sys
-    parse_all(sys.argv[1])
+    for file_name, file_content in ted_documents():
+        parse(file_name, file_content)
+    #parse_all(sys.argv[1])
