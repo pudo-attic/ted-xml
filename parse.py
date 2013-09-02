@@ -1,40 +1,9 @@
 import os
 from lxml import etree
 from pprint import pprint
-
-from parseutil import ted_documents
-
-"""
-<CODIF_DATA>
- ///   <DS_DATE_DISPATCH>20130619</DS_DATE_DISPATCH>
- ///   <AA_AUTHORITY_TYPE CODE="R">Regional or local Agency/Office</AA_AUTHORITY_TYPE>
- ///   <TD_DOCUMENT_TYPE CODE="7">Contract award</TD_DOCUMENT_TYPE>
- ///   <NC_CONTRACT_NATURE CODE="4">Service contract</NC_CONTRACT_NATURE>
- ///   <PR_PROC CODE="1">Open procedure </PR_PROC>
- ///   <RP_REGULATION CODE="Z">Not specified</RP_REGULATION>
- ///   <TY_TYPE_BID CODE="9">Not applicable</TY_TYPE_BID>
- ///   <AC_AWARD_CRIT CODE="2">The most economic tender</AC_AWARD_CRIT>
-    <MA_MAIN_ACTIVITIES CODE="A">Housing and community amenities</MA_MAIN_ACTIVITIES>
- ///   <HEADING>01303</HEADING>
-    <DIRECTIVE VALUE="2004/18/EC"/>
-</CODIF_DATA>
-"""
-
-
-def text_get(el, path):
-    subel = el.find(path)
-    if subel is None:
-        return None
-    return subel.text
-
-
-def attr_get(el, path, attr):
-    subel = el.find(path)
-    if subel is None:
-        return None
-    return subel.get(attr)
-
+from parseutil import ted_documents, text_get, attr_get
 from collections import defaultdict
+
 FORM_TYPES = defaultdict(int)
 
 def audit(filename, doc):
@@ -58,6 +27,7 @@ def parse(filename, file_content):
     #fh = open(filename, 'rb')
     xmldata = file_content.replace('xmlns="', 'xmlns_="')
     #fh.close()
+    #print xmldata.decode('utf-8').encode('ascii', 'replace')
     doc = etree.fromstring(xmldata)
     audit(filename, doc)
     cpvs = [{'code': e.get('CODE'), 'text': e.text} for e in doc.findall('.//NOTICE_DATA/ORIGINAL_CPV')]
@@ -70,7 +40,6 @@ def parse(filename, file_content):
         'orig_language': doc.find('.//NOTICE_DATA/LG_ORIG').text,
         'iso_country': doc.find('.//NOTICE_DATA/ISO_COUNTRY').get('VALUE'),
         'original_cpv': cpvs,
-
         'dispatch_date': text_get(doc, './/CODIF_DATA/DS_DATE_DISPATCH'),
         'request_document_date': text_get(doc, './/CODIF_DATA/DD_DATE_REQUEST_DOCUMENT'),
         'submission_date': text_get(doc, './/CODIF_DATA/DT_DATE_FOR_SUBMISSION'),
@@ -97,6 +66,8 @@ def parse(filename, file_content):
         'town': text_get(doc, './/ML_TITLES/ML_TI_DOC[@LG="EN"]/TI_TOWN'),
         'country': text_get(doc, './/ML_TITLES/ML_TI_DOC[@LG="EN"]/TI_CY')
     }
+    #missing: values
+
     #print doc.find('.//REF_OJS/COLL_OJ')
     #pprint(data)
 
@@ -112,4 +83,5 @@ if __name__ == '__main__':
     import sys
     for file_name, file_content in ted_documents():
         parse(file_name, file_content)
+        #break
     #parse_all(sys.argv[1])

@@ -16,3 +16,17 @@ def ted_documents():
             yield member.name, fh.read()
             fh.close()
 
+
+def text_get(el, path):
+    subel = el.find(path)
+    if subel is None:
+        return None
+    return subel.text
+
+
+def attr_get(el, path, attr):
+    subel = el.find(path)
+    if subel is None:
+        return None
+    return subel.get(attr)
+
