@@ -30,3 +30,10 @@ def attr_get(el, path, attr):
         return None
     return subel.get(attr)
 
+
+def generate_paths(el):
+    print el.tag
+
+def warn_paths(paths):
+    pass
+
