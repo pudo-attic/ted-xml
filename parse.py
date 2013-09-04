@@ -1,64 +1,8 @@
 import os
 from lxml import etree
 from pprint import pprint
-from parseutil import ted_documents, text_get, attr_get, generate_paths
+from forms.parseutil import ted_documents, Extractor
 from collections import defaultdict
-
-FORM_TYPES = defaultdict(int)
-
-
-class Extractor(object):
-
-    def __init__(self, el):
-        self.el = el
-        self.paths = {}
-        self._ignore = set()
-        self.generate(el)
-
-    def element_name(self, el):
-        if el == self.el:
-            return '.'
-        return self.element_name(el.getparent()) + '/' + el.tag
-
-    def generate(self, el):
-        children = el.getchildren()
-        if len(children):
-            for child in children:
-                self.generate(child)
-        else:
-            name = self.element_name(el)
-            if not name in self.paths:
-                self.paths[name] = el
-
-    def ignore(self, path):
-        self._ignore.add(path)
-
-    def text(self, path, ignore=True):
-        el = self.el.find(path)
-        if el is None:
-            return None
-        if ignore:
-            self.ignore(self.element_name(el))
-        return el.text
-
-    def attr(self, path, attr, ignore=True):
-        el = self.el.find(path)
-        if el is None:
-            return None
-        if ignore:
-            self.ignore(self.element_name(el))
-        return el.get(attr)
-
-    def audit(self):
-        #print "UNPARSED:"
-        for k, v in sorted(self.paths.items()):
-            if k in self._ignore:
-                continue
-            pprint({
-                'path': k,
-                'text': v.text,
-                'attr': v.attrib
-            })
 
 
 def select_form(form, lang):
@@ -84,7 +28,6 @@ def parse(filename, file_content):
     form = root.find('.//FORM_SECTION')
     form.getparent().remove(form)
     ext = Extractor(root)
-    #audit(filename, doc)
     cpvs = [{'code': e.get('CODE'), 'text': e.text} for e in root.findall('.//NOTICE_DATA/ORIGINAL_CPV')]
     ext.ignore('./CODED_DATA_SECTION/NOTICE_DATA/ORIGINAL_CPV')
     
@@ -147,7 +90,6 @@ def parse(filename, file_content):
     ext.ignore('./CODED_DATA_SECTION/NOTICE_DATA/VALUES_LIST/VALUES/SINGLE_VALUE/VALUE')
     ext.ignore('./CODED_DATA_SECTION/NOTICE_DATA/VALUES_LIST')
     ext.ignore('./CODED_DATA_SECTION/NOTICE_DATA/VALUES_LIST/VALUES/RANGE_VALUE/VALUE')
-    #ext.ignore('')
     
     ext.ignore('./TRANSLATION_SECTION/TRANSLITERATIONS/TRANSLITERATED_ADDR/TOWN')
     ext.ignore('./TRANSLATION_SECTION/TRANSLITERATIONS/TRANSLITERATED_ADDR/POSTAL_CODE')
@@ -158,31 +100,22 @@ def parse(filename, file_content):
     ext.ignore('./TRANSLATION_SECTION/TRANSLITERATIONS/TRANSLITERATED_ADDR/CONTACT_POINT')
     ext.ignore('./TRANSLATION_SECTION/TRANSLITERATIONS/TRANSLITERATED_ADDR/ATTENTION')
     ext.ignore('./TRANSLATION_SECTION/TRANSLITERATIONS/TRANSLITERATED_ADDR/ADDRESS')
-    #ext.ignore('')
-    #ext.ignore('')
-    #ext.ignore('')
-    #ext.ignore('')
-    #ext.ignore('')
-    
     ext.audit()
     
     form_ = select_form(form, data['orig_language'])
+    if form_.tag == 'CONTRACT_AWARD':
+        from forms.contract_award import parse_form
+        parse_form(form_, data)
+        print form_.get('FORM'), form_.get('VERSION')
+        #print [file_name]
+        #import sys; sys.exit()
     #ext.ignore('')
     #el = root.find('./CODED_DATA_SECTION/NOTICE_DATA/VALUES_LIST')
     #if el is not None:
     #    print etree.tostring(el, pretty_print=True)
-    #missing: values
 
-    #print doc.find('.//REF_OJS/COLL_OJ')
     #pprint(data)
 
-
-def parse_all(path):
-    for (dirpath, dirname, filenames) in os.walk(path):
-        for filename in filenames:
-            parse(os.path.join(dirpath, filename))
-
-    pprint(dict(FORM_TYPES))
 
 if __name__ == '__main__':
     import sys
