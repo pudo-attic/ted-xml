@@ -1,5 +1,6 @@
 from lxml import etree
 from glob import iglob
+from pprint import pprint
 import tarfile
 
 from common import EXPORTS_PATH
@@ -41,7 +42,13 @@ class Extractor(object):
                 self.paths[name] = el
 
     def ignore(self, path):
-        self._ignore.add(path)
+        if path.endswith('*'):
+            path = path[:len(path)-1]
+            for p in self.paths.keys():
+                if p.startswith(path):
+                    self._ignore.add(p)
+        else:
+            self._ignore.add(path)
 
     def text(self, path, ignore=True):
         el = self.el.find(path)
@@ -50,6 +57,14 @@ class Extractor(object):
         if ignore:
             self.ignore(self.element_name(el))
         return el.text
+    
+    def html(self, path, ignore=True):
+        el = self.el.find(path)
+        if el is None:
+            return None
+        if ignore:
+            self.ignore(self.element_name(el))
+        return etree.tostring(el)
 
     def attr(self, path, attr, ignore=True):
         el = self.el.find(path)
@@ -64,10 +79,11 @@ class Extractor(object):
         for k, v in sorted(self.paths.items()):
             if k in self._ignore:
                 continue
-            pprint({
-                'path': k,
-                'text': v.text,
-                'attr': v.attrib
-            })
+            if v.text or len(v.attrib.keys()):
+                pprint({
+                    'path': k,
+                    'text': v.text,
+                    'attr': v.attrib
+                })
 
 
