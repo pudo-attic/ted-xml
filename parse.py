@@ -103,12 +103,16 @@ def parse(filename, file_content):
     ext.audit()
     
     form_ = select_form(form, data['orig_language'])
+    if form_.tag.startswith('CONTRACT_AWARD_'):
+        pass
+        #print etree.tostring(form_, pretty_print=True)
+        #print form_.tag
     if form_.tag == 'CONTRACT_AWARD':
         from forms.contract_award import parse_form
         parse_form(form_, data)
-        print form_.get('FORM'), form_.get('VERSION')
-        #print [file_name]
-        #import sys; sys.exit()
+        #print form_.get('FORM'), form_.get('VERSION')
+    #print [file_name]
+    #import sys; sys.exit()
     #ext.ignore('')
     #el = root.find('./CODED_DATA_SECTION/NOTICE_DATA/VALUES_LIST')
     #if el is not None:
