@@ -51,6 +51,8 @@ class Extractor(object):
             self._ignore.add(path)
 
     def text(self, path, ignore=True):
+        if path is None:
+            return
         el = self.el.find(path)
         if el is None:
             return None
@@ -59,6 +61,8 @@ class Extractor(object):
         return el.text
     
     def html(self, path, ignore=True):
+        if path is None:
+            return
         el = self.el.find(path)
         if el is None:
             return None
@@ -67,6 +71,8 @@ class Extractor(object):
         return etree.tostring(el)
 
     def attr(self, path, attr, ignore=True):
+        if path is None:
+            return
         el = self.el.find(path)
         if el is None:
             return None
