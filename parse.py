@@ -3,7 +3,7 @@ from lxml import etree
 from pprint import pprint
 from forms.parseutil import ted_documents, Extractor
 from collections import defaultdict
-
+from common import engine, documents_table, contracts_table, cpvs_table, references_table
 
 def select_form(form, lang):
     lang = lang.split()[0]
@@ -103,21 +103,33 @@ def parse(filename, file_content):
     ext.audit()
     
     form_ = select_form(form, data['orig_language'])
+    contracts = []
     if form_.tag.startswith('CONTRACT_AWARD_'):
-        if not 'DEFENCE' in form_.tag:
-            return
-        #print etree.tostring(form_, pretty_print=True)
-        #print form_.tag
         from forms.contract_award import parse_form
-        parse_form(form_, data)
-        #print form_.get('FORM'), form_.get('VERSION')
-    #print [file_name]
-    #import sys; sys.exit()
-    #ext.ignore('')
-    #el = root.find('./CODED_DATA_SECTION/NOTICE_DATA/VALUES_LIST')
-    #if el is not None:
-    #    print etree.tostring(el, pretty_print=True)
+        contracts = parse_form(form_)
+    
+    # save to DB
+    doc_no = data['doc_no']
+    engine.begin()
+    cpvs_table.delete(doc_no=doc_no)
+    references_table.delete(doc_no=doc_no)
+    contracts_table.delete(doc_no=doc_no)
+    documents_table.delete(doc_no=doc_no)
+    
+    for cpv in data.pop('original_cpv'):
+        cpv['doc_no'] = doc_no
+        cpvs_table.insert(cpv)
 
+    for ref in data.pop('references'):
+        obj = {'doc_no': doc_no, 'ref': ref}
+        references_table.insert(obj)
+
+    for contract in contracts:
+        contract['doc_no'] = doc_no
+        contracts_table.insert(contract)
+
+    documents_table.insert(data)
+    engine.commit()
     #pprint(data)
 
 

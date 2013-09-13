@@ -52,12 +52,30 @@ LOOKUP = {
             'util': './/NOPATH',
             'mil': './/TYPE_AND_ACTIVITIES_OR_CONTRACTING_ENTITY_AND_PURCHASING_ON_BEHALF//TYPE_OF_ACTIVITY'
         },
+        'activity_type_other': {
+            'std': './/TYPE_AND_ACTIVITIES_AND_PURCHASING_ON_BEHALF//TYPE_OF_ACTIVITY_OTHER',
+            'util': './/NOPATH',
+            'mil': './/TYPE_AND_ACTIVITIES_OR_CONTRACTING_ENTITY_AND_PURCHASING_ON_BEHALF//TYPE_OF_ACTIVITY_OTHER'
+        },
         'authority_type': {
             'std': './/TYPE_AND_ACTIVITIES_AND_PURCHASING_ON_BEHALF//TYPE_OF_CONTRACTING_AUTHORITY',
             'util': './/NOPATH',
             'mil': './/TYPE_AND_ACTIVITIES_OR_CONTRACTING_ENTITY_AND_PURCHASING_ON_BEHALF//TYPE_OF_CONTRACTING_AUTHORITY'
         },
+        'authority_type_other': {
+            'std': './/TYPE_AND_ACTIVITIES_AND_PURCHASING_ON_BEHALF//TYPE_AND_ACTIVITIES/TYPE_OF_CONTRACTING_AUTHORITY_OTHER',
+            'util': './/NOPATH',
+            'mil': './/TYPE_AND_ACTIVITIES_OR_CONTRACTING_ENTITY_AND_PURCHASING_ON_BEHALF/TYPE_AND_ACTIVITIES/TYPE_OF_CONTRACTING_AUTHORITY_OTHER'
+        },
+        'operator': {
+            'std': './ECONOMIC_OPERATOR_NAME_ADDRESS//',
+            'util': './/',
+            'mil': './ECONOMIC_OPERATOR_NAME_ADDRESS//'
+        },
     }
+
+
+
 
 
 def _lookup(s, key):
@@ -96,6 +114,8 @@ def extract_values(ext, prefix, query):
         prefix + '_cost': ext.attr(query + '/VALUE_COST', 'FMTVAL'),
         prefix + '_low': ext.attr(query + '//LOW_VALUE', 'FMTVAL'),
         prefix + '_high': ext.attr(query + '//HIGH_VALUE', 'FMTVAL'),
+        prefix + '_months': ext.attr(query + '//NUMBER_MONTHS', 'FMTVAL'),
+        prefix + '_years': ext.attr(query + '//NUMBER_YEARS', 'FMTVAL'),
         prefix + '_vat_rate': ext.attr(query + '//VAT_PRCT', 'FMTVAL')
     }
 
@@ -110,30 +130,30 @@ def extract_values(ext, prefix, query):
     return data
 
 
-def parse_award(root):
+def parse_award(root, lookup):
     ext = Extractor(root)
     contract = {
-        'contract_number': ext.text('./CONTRACT_NUMBER'),
-        'lot_number': ext.text('./LOT_NUMBER'),
-        'contract_title': ext.text('./CONTRACT_TITLE/P') or ext.text('./CONTRACT_TITLE'),
-        'contract_award_day': ext.text('.//CONTRACT_AWARD_DATE/DAY'),
-        'contract_award_month': ext.text('.//CONTRACT_AWARD_DATE/MONTH'),
-        'contract_award_year': ext.text('.//CONTRACT_AWARD_DATE/YEAR'),
+        'contract_number': ext.text('./CONTRACT_NUMBER') or ext.text('.//CONTRACT_NO'),
+        'lot_number': ext.text('./LOT_NUMBER') or ext.text('.//LOT_NUMBER'),
+        'contract_title': ext.text('./CONTRACT_TITLE/P') or ext.text('./CONTRACT_TITLE') or ext.text('.//TITLE_CONTRACT') or ext.text('.//TITLE_CONTRACT/P'),
+        'contract_award_day': ext.text('.//CONTRACT_AWARD_DATE/DAY') or ext.text('.//DATE_OF_CONTRACT_AWARD/DAY'),
+        'contract_award_month': ext.text('.//CONTRACT_AWARD_DATE/MONTH') or ext.text('.//DATE_OF_CONTRACT_AWARD/MONTH'),
+        'contract_award_year': ext.text('.//CONTRACT_AWARD_DATE/YEAR') or ext.text('.//DATE_OF_CONTRACT_AWARD/YEAR'),
         'offers_received_num': ext.text('.//OFFERS_RECEIVED_NUMBER'),
         'offers_received_meaning': ext.text('.//OFFERS_RECEIVED_NUMBER_MEANING')
     }
 
     contract.update(extract_values(ext, 'contract_value', './/COSTS_RANGE_AND_CURRENCY_WITH_VAT_RATE'))
     contract.update(extract_values(ext, 'initial_value', './/INITIAL_ESTIMATED_TOTAL_VALUE_CONTRACT'))
-    contract.update(extract_address(ext, 'operator', './ECONOMIC_OPERATOR_NAME_ADDRESS//'))
-    return contract
+    contract.update(extract_address(ext, 'operator', lookup('operator')))
     #from lxml import etree
     #print etree.tostring(root, pretty_print=True)
     #pprint(contract)
     #ext.audit()
+    return contract
 
 
-def parse_form(root, data):
+def parse_form(root):
     form_type = 'std'
     if 'DEFENCE' in root.tag:
         form_type = 'mil'
@@ -156,11 +176,12 @@ def parse_form(root, data):
         'gpa_covered': ext.attr(lookup('award_description')+'/CONTRACT_COVERED_GPA', 'VALUE'),
         'electronic_auction': ext.attr(lookup('electronic_auction'), 'VALUE'),
         'cpv_code': ext.attr(lookup('award_description')+'/CPV/CPV_MAIN/CPV_CODE', 'CODE'),
+        'reason_lawful': ext.html('.//REASON_CONTRACT_LAWFUL'),
         #'cpv_additional_code': ext.attr('.//DESCRIPTION_AWARD_NOTICE_INFORMATION/CPV/CPV_ADDITIONAL/CPV_CODE', 'CODE'),
         'authority_type': ext.text(lookup('authority_type'), 'VALUE'),
-        'authority_type_other': ext.text('.//TYPE_AND_ACTIVITIES_AND_PURCHASING_ON_BEHALF//TYPE_AND_ACTIVITIES/TYPE_OF_CONTRACTING_AUTHORITY_OTHER', 'VALUE'),
+        'authority_type_other': ext.text(lookup('authority_type_other'), 'VALUE'),
         'activity_type': ext.text(lookup('activity_type')),
-        'activity_type_other': ext.text('.//TYPE_AND_ACTIVITIES_AND_PURCHASING_ON_BEHALF//TYPE_OF_ACTIVITY_OTHER'),
+        'activity_type_other': ext.text(lookup('activity_type_other')),
         'activity_contractor': ext.attr('.//ACTIVITIES_OF_CONTRACTING_ENTITY/ACTIVITY_OF_CONTRACTING_ENTITY', 'VALUE'),
         'concessionaire_email': ext.text('.//CA_CE_CONCESSIONAIRE_PROFILE/E_MAILS/E_MAIL'),
         'concessionaire_nationalid': ext.text('.//CA_CE_CONCESSIONAIRE_PROFILE/ORGANISATION/NATIONALID'),
@@ -204,10 +225,12 @@ def parse_form(root, data):
     #if el:
     #    print etree.tostring(el, pretty_print=True)
     #    #pprint(form)
-    ext.audit()
-
+    #ext.audit()
+    
+    contracts = []
     for award in root.findall(lookup('award_dest')):
-        contract = parse_award(award)
+        contract = parse_award(award, lookup)
         contract.update(form)
-        contract['doc_no'] = data['doc_no']
+        contracts.append(contract)
         #pprint(contract)
+    return contracts

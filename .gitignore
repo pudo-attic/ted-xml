@@ -36,3 +36,4 @@ nosetests.xml
 
 ted_exports/*
 .env
+*.DS_Store
